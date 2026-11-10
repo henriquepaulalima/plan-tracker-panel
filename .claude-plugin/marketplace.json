@@ -1,0 +1,5 @@
+{
+  "name": "plan-tracker-panel",
+  "owner": { "name": "henriquepaulalima" },
+  "plugins": [{ "name": "plan-tracker-panel", "source": "./" }]
+}

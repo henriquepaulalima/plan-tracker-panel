@@ -1,0 +1,6 @@
+{
+  "name": "plan-tracker-panel",
+  "version": "0.1.0",
+  "description": "A side panel showing the approved implementation plan and which steps are done, in progress or left.",
+  "types": "./types/index.d.ts"
+}
