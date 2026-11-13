@@ -102,11 +102,24 @@ Every imported, approved or `plan_set` plan is kept in a list shared by all work
 
 ## What it runs, reads and sends
 
-- **Git, read-only.** To find the repository and its `.md` files it runs `git rev-parse --git-common-dir`, `git worktree list --porcelain` and `git ls-files` in the current folder and its worktrees. It never writes to the repository.
-- **Files.** It reads the Markdown file you import, and checks its modification time once a second while that plan is tracked. It writes no files.
-- **Model requests.** Only when an imported file has no status markers, its text is sent to the `haiku` model through Claude Code's own model access, as described in [Importing a plan](#importing-a-plan). Nothing is sent to any other service.
-- **Local storage.** Saved plans and which plan each folder shows are kept in Claude Code's per-plugin store on your machine.
-- **Session.** It adds a short instruction to the system prompt and registers the `plan_step` and `plan_set` tools, which Claude calls to report progress and which run without a permission prompt because they only update the panel.
+The plugin talks to no network service of its own. Everything it does goes through Claude Code:
+
+- **Programs it starts.** Only `git`, and only these three read-only commands, written in full in `hooks/register.tsx`: `git rev-parse --path-format=absolute --git-common-dir` (which repository this is, so saved plans are shared by its worktrees), `git worktree list --porcelain` (the worktrees to list files from) and `git ls-files -z --cached --others --exclude-standard -- '*.md' '*.MD'` (the Markdown files the import picker offers). It never writes to the repository.
+- **Files it reads.** The Markdown file you import, and that file's size and modification time once a second while its plan is tracked. It writes no files.
+- **What it sends, and where.** Two things leave your machine, both to Anthropic's API through Claude Code's own model access, the same way the rest of your session does:
+  - When an imported file has no status markers, the file's text goes to the `haiku` model in one request, to read each step's status (see [Importing a plan](#importing-a-plan)). A file with markers sends nothing.
+  - Short messages added to the conversation for Claude: the tracked plan's step list when you import or switch plans, and the new step numbers when the plan file's steps change.
+- **What it reads from the conversation.** The plan text from Claude's `ExitPlanMode` call when you approve a plan in plan mode. It reads that call's result without changing it, apart from adding a note of the tracked steps for Claude.
+- **Local storage.** Saved plans, and which plan each folder shows, are kept in Claude Code's per-plugin store on your machine.
+- **System prompt.** It adds one short section telling Claude to report progress with `plan_step`, and only while that tool is available.
+- **Tools.** It registers two tools of its own, `plan_step` (report a step's status) and `plan_set` (start tracking a list of steps), and answers their calls itself by updating the panel. It does not answer or change calls to any other tool.
+- **Permissions.** It makes no permission decisions, so Claude Code asks you before `plan_step` and `plan_set` run, like any other tool, unless your own rules allow them. To skip that prompt, add them to `permissions.allow` in `~/.claude/settings.json`:
+
+  ```json
+  { "permissions": { "allow": ["mcp__plan-tracker-panel__plan_step", "mcp__plan-tracker-panel__plan_set"] } }
+  ```
+
+- **Commands and the chat.** It registers `/plan-tracker-panel` and the key-bound commands in the table above, hides the key-bound ones from the typeahead and `/help`, and draws their prompt rows and spinner as nothing (see [Limits](#limits)). It leaves every other command and message as it is.
 
 ## Limits
 
@@ -114,7 +127,7 @@ The panel's keys run slash commands, which Claude Code normally shows in the cha
 
 The checkmarks are only as accurate as Claude's reporting. If a step looks stale, ask Claude to update the plan panel.
 
-The mod adds a short instruction to the system prompt and one tool definition to every session. Importing a file that has no status markers spends one small `haiku` request on it, and so does each later change to that file while it is tracked.
+The mod adds a short instruction to the system prompt and two tool definitions to every session. Importing a file that has no status markers spends one small `haiku` request on it, and so does each later change to that file while it is tracked.
 
 ## Develop
 

@@ -28,14 +28,14 @@ const WORDS: [RegExp, StepStatus][] = [
 ]
 
 const EMOJI: [RegExp, StepStatus][] = [
-  [/^(?:✅|✔️?|☑️?|✓|🟢)$/u, 'done'],
-  [/^(?:🚧|🔄|⏳|🟡|▶️?|🏗️?)$/u, 'in_progress'],
-  [/^(?:⏭️?|🚫)$/u, 'skipped'],
+  [/^(?:✅|✔\uFE0F?|☑\uFE0F?|✓|🟢)$/u, 'done'],
+  [/^(?:🚧|🔄|⏳|🟡|▶\uFE0F?|🏗\uFE0F?)$/u, 'in_progress'],
+  [/^(?:⏭\uFE0F?|🚫)$/u, 'skipped'],
   [/^(?:⬜|☐|🔲|○)$/u, 'pending'],
 ]
 
-const LEADING_EMOJI = /^(✅|✔️?|☑️?|✓|🟢|🚧|🔄|⏳|🟡|▶️?|🏗️?|⏭️?|🚫|⬜|☐|🔲|○)\s*/u
-const TRAILING_EMOJI = /\s*(✅|✔️?|☑️?|✓|🟢|🚧|🔄|⏳|🟡|▶️?|🏗️?|⏭️?|🚫|⬜|☐|🔲|○)$/u
+const LEADING_EMOJI = /^(✅|✔\uFE0F?|☑\uFE0F?|✓|🟢|🚧|🔄|⏳|🟡|▶\uFE0F?|🏗\uFE0F?|⏭\uFE0F?|🚫|⬜|☐|🔲|○)\s*/u
+const TRAILING_EMOJI = /\s*(✅|✔\uFE0F?|☑\uFE0F?|✓|🟢|🚧|🔄|⏳|🟡|▶\uFE0F?|🏗\uFE0F?|⏭\uFE0F?|🚫|⬜|☐|🔲|○)$/u
 // A tag in brackets at either end, or after a dash or colon at the end:
 // "Add login (done)", "[WIP] Add login", "Add login — in progress".
 const LEADING_TAG = /^[[(]\s*([^\])]{2,15})\s*[\])]\s*[:\-–—]?\s*/

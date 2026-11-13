@@ -312,10 +312,10 @@ export function markSpans(spans: readonly Span[], ranges: readonly Range[], firs
 
 // Terminal cells a string takes: wide for emoji and East Asian characters.
 const WIDE =
-  /[ᄀ-ᅟ⌚⌛⏩-⏬⏰⏳◽◾☔☕♈-♓♿⚓⚡⚪⚫⚽⚾⛄⛅⛎⛔⛪⛲⛳⛵⛺⛽✅✊✋✨❌❎❓-❕❗➕-➗➰➿⬛⬜⭐⭕⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦\u{1F000}-\u{1FAFF}]/u
-const ZERO = /[̀-ͯ​-‏︀-︎]/u
+  /[ᄀ-ᅟ⌚⌛⏩-⏬⏰⏳◽◾☔☕♈-♓♿⚓⚡⚪⚫⚽⚾⛄⛅⛎⛔⛪⛲⛳⛵⛺⛽✅✊✋✨❌❎❓-❕❗➕-➗➰➿⬛⬜⭐⭕⺀-\uA4CF가-힣豈-\uFAFF︰-﹏\uFF00-｠￠-￦\u{1F000}-\u{1FAFF}]/u
+const ZERO = /[\u0300-\u036F\u200B-\u200F\uFE00-\uFE0E]/u
 // Asks for the emoji form of the character before it, two cells wide.
-const EMOJI_FORM = '️'
+const EMOJI_FORM = '\uFE0F'
 
 export function cellWidth(text: string): number {
   let width = 0

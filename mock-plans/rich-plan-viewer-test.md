@@ -200,8 +200,7 @@ Dropped for now: weighting expensive endpoints (search = 5 tokens, export = 20) 
 
 ```bash
 k6 run --vus 200 --duration 5m \
-  -e API_KEY="$ENTERPRISE_TEST_KEY" \
-  -e TARGET=https://staging-api.example.com/v2/products \
+  --tag scenario=enterprise-limit \
   scripts/load/rate-limit.js
 ```
 

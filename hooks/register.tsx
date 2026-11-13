@@ -200,17 +200,30 @@ async function restoreAfterLeave($: EngineInterface): Promise<void> {
   await restoreDraft($)
 }
 
-function git($: EngineInterface, args: string[], cwd?: string): Promise<string | undefined> {
-  return $.process
-    .run(['git', ...args], cwd === undefined ? undefined : { cwd })
-    .then(ran => (ran.exitCode === 0 ? ran.stdout : undefined))
-    .catch(() => undefined)
+// The plugin runs exactly three git commands, all read-only, each written in
+// full here: the repository's common git folder, its worktrees, and the .md
+// files in one worktree.
+type Ran = { exitCode: number; stdout: string }
+
+const stdoutOf = (ran: Ran) => (ran.exitCode === 0 ? ran.stdout : undefined)
+
+function gitCommonDir($: EngineInterface): Promise<string | undefined> {
+  return $.process.run(['git', 'rev-parse', '--path-format=absolute', '--git-common-dir']).then(stdoutOf).catch(() => undefined)
+}
+
+function gitWorktrees($: EngineInterface): Promise<string | undefined> {
+  return $.process.run(['git', 'worktree', 'list', '--porcelain']).then(stdoutOf).catch(() => undefined)
+}
+
+// Tracked and untracked files alike, without what .gitignore leaves out.
+function gitMarkdownFiles($: EngineInterface, cwd: string): Promise<string | undefined> {
+  return $.process.run(['git', 'ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', '*.md', '*.MD'], { cwd }).then(stdoutOf).catch(() => undefined)
 }
 
 // Plans are shared by every worktree of a repository: the store is keyed by
 // its common git folder, or by the folder itself outside a repository.
 async function libraryScope($: EngineInterface): Promise<string> {
-  const common = await git($, ['rev-parse', '--path-format=absolute', '--git-common-dir'])
+  const common = await gitCommonDir($)
 
   return common?.trim() || (await $.session.cwd())
 }
@@ -329,7 +342,7 @@ async function announce($: EngineInterface, tracked: Plan): Promise<void> {
 async function loadFiles($: EngineInterface): Promise<void> {
   await update($, files, (): FileList => ({ status: 'loading' }))
 
-  const listed = await git($, ['worktree', 'list', '--porcelain'])
+  const listed = await gitWorktrees($)
   if (listed === undefined) {
     await update($, files, (): FileList => ({ status: 'error', message: 'Not inside a git repository.' }))
     return
@@ -338,8 +351,7 @@ async function loadFiles($: EngineInterface): Promise<void> {
   const worktrees = ownFirst(readWorktrees(listed), await $.session.cwd())
   const found = await Promise.all(
     worktrees.map(async tree => {
-      // Tracked and untracked files alike, without what .gitignore leaves out.
-      const out = await git($, ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', '*.md', '*.MD'], tree.path)
+      const out = await gitMarkdownFiles($, tree.path)
 
       return out === undefined ? [] : readFileList(tree, out, worktrees.length > 1)
     }),
@@ -409,9 +421,8 @@ type Imported = { plan: Plan; isAnalyzed: boolean } | { error: string }
 
 // The model reads plans whose text alone says where they stand ("phase 1 shipped").
 async function askModel($: EngineInterface, markdown: string): Promise<Plan | undefined> {
-  const answer = await $.model
-    .complete({ model: ANALYSIS_MODEL, system: ANALYSIS_SYSTEM, prompt: markdown, maxTokens: 8000, timeoutMs: 60_000 })
-    .catch(() => undefined)
+  const request = { model: ANALYSIS_MODEL, system: ANALYSIS_SYSTEM, prompt: markdown, maxTokens: 8000, timeoutMs: 60_000 }
+  const answer = await $.model.complete(request).catch(() => undefined)
 
   return answer?.isAnswered === true ? readAnalysis(answer.text, markdown) : undefined
 }
@@ -823,9 +834,6 @@ export const register: Register = on => {
 
     return next(e)
   })
-
-  on('tool.check', { tool: PLAN_STEP }, () => ({ decision: 'allow' }))
-  on('tool.check', { tool: PLAN_SET }, () => ({ decision: 'allow' }))
 
   on('prompt.compose', async ($, e, next) => {
     const composed = await next(e)
