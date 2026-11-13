@@ -444,20 +444,20 @@ async function readPlanFile($: EngineInterface, path: string): Promise<Imported>
   let isAnalyzed = false
 
   if (!parsed.isStatusKnown) {
-    const read = await askModel($, markdown)
-    if (read !== undefined) {
+    const fromModel = await askModel($, markdown)
+    if (fromModel !== undefined) {
       isAnalyzed = true
       // The parser's steps are kept where it found them, the model's statuses laid
       // over them: by position when both found as many, else by title.
       analyzed =
         parsed.plan.steps.length === 0
-          ? { ...read, title: parsed.plan.title === 'Plan' ? read.title : parsed.plan.title }
-          : read.steps.length === parsed.plan.steps.length
+          ? { ...fromModel, title: parsed.plan.title === 'Plan' ? fromModel.title : parsed.plan.title }
+          : fromModel.steps.length === parsed.plan.steps.length
             ? {
                 ...parsed.plan,
-                steps: parsed.plan.steps.map((step, index) => ({ ...step, status: read.steps[index]?.status ?? step.status })),
+                steps: parsed.plan.steps.map((step, index) => ({ ...step, status: fromModel.steps[index]?.status ?? step.status })),
               }
-            : carryProgress(read, parsed.plan)
+            : carryProgress(fromModel, parsed.plan)
     }
   }
 
