@@ -113,12 +113,7 @@ The plugin talks to no network service of its own. Everything it does goes throu
 - **Local storage.** Saved plans, and which plan each folder shows, are kept in Claude Code's per-plugin store on your machine.
 - **System prompt.** It adds one short section telling Claude to report progress with `plan_step`, and only while that tool is available.
 - **Tools.** It registers two tools of its own, `plan_step` (report a step's status) and `plan_set` (start tracking a list of steps), and answers their calls itself by updating the panel. It does not answer or change calls to any other tool.
-- **Permissions.** It makes no permission decisions, so Claude Code asks you before `plan_step` and `plan_set` run, like any other tool, unless your own rules allow them. To skip that prompt, add them to `permissions.allow` in `~/.claude/settings.json`:
-
-  ```json
-  { "permissions": { "allow": ["mcp__plan-tracker-panel__plan_step", "mcp__plan-tracker-panel__plan_set"] } }
-  ```
-
+- **Permissions.** It makes no permission decisions of its own: it never answers a permission check for any tool, its own included, so whether `plan_step` and `plan_set` run is left to Claude Code and your permission rules (a `deny` rule for `mcp__plan-tracker-panel__plan_step` or `mcp__plan-tracker-panel__plan_set` blocks it).
 - **Commands and the chat.** It registers `/plan-tracker-panel` and the key-bound commands in the table above, hides the key-bound ones from the typeahead and `/help`, and draws their prompt rows and spinner as nothing (see [Limits](#limits)). It leaves every other command and message as it is.
 
 ## Limits
