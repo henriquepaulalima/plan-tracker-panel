@@ -215,13 +215,53 @@ async function libraryScope($: EngineInterface): Promise<string> {
   return common?.trim() || (await $.session.cwd())
 }
 
+// The engine refuses a store key over 256 characters, and a key names the
+// repository's path and often a plan file's path too. A key that fits is kept
+// as it is, so plans saved before stay found; a longer one has each of its
+// parts over PART_LIMIT replaced by a shortened form ending in a hash.
+const KEY_LIMIT = 256
+const PART_LIMIT = 120
+
+function hash(text: string): string {
+  let a = 0xdeadbeef
+  let b = 0x41c6ce57
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i)
+    a = Math.imul(a ^ code, 2654435761)
+    b = Math.imul(b ^ code, 1597334677)
+  }
+  a = Math.imul(a ^ (a >>> 16), 2246822507) ^ Math.imul(b ^ (b >>> 13), 3266489909)
+  b = Math.imul(b ^ (b >>> 16), 2246822507) ^ Math.imul(a ^ (a >>> 13), 3266489909)
+
+  return (b >>> 0).toString(16).padStart(8, '0') + (a >>> 0).toString(16).padStart(8, '0')
+}
+
+function shorten(part: string): string {
+  if (part.length <= PART_LIMIT) return part
+
+  return `${part.slice(0, PART_LIMIT - 17)}#${hash(part)}`
+}
+
+// Each `plans:` key's prefix: the plain one and, when it differs, the shortened one.
+async function libraryPrefixes($: EngineInterface): Promise<string[]> {
+  const scope = await libraryScope($)
+
+  return [...new Set([`plans:${scope}:`, `plans:${shorten(scope)}:`])]
+}
+
+function fitKey(kind: string, ...parts: string[]): string {
+  const plain = [kind, ...parts].join(':')
+
+  return plain.length <= KEY_LIMIT ? plain : [kind, ...parts.map(shorten)].join(':')
+}
+
 async function planKey($: EngineInterface, id: string): Promise<string> {
-  return `plans:${await libraryScope($)}:${id}`
+  return fitKey('plans', await libraryScope($), id)
 }
 
 // Which plan the panel shows is the folder's own: two worktrees can follow two plans.
 async function activeKey($: EngineInterface): Promise<string> {
-  return `active:${await $.session.cwd()}`
+  return fitKey('active', await $.session.cwd())
 }
 
 function isPlan(value: unknown): value is Plan {
@@ -235,8 +275,8 @@ function planId(one: Plan): string {
 }
 
 async function loadLibrary($: EngineInterface): Promise<Plan[]> {
-  const prefix = `plans:${await libraryScope($)}:`
-  const keys = (await $.store.keys()).filter(key => key.startsWith(prefix))
+  const prefixes = await libraryPrefixes($)
+  const keys = (await $.store.keys()).filter(key => prefixes.some(prefix => key.startsWith(prefix)))
   const saved = await Promise.all(keys.map(key => $.store.get(key)))
 
   return newestFirst(saved.filter(isPlan))
@@ -244,7 +284,7 @@ async function loadLibrary($: EngineInterface): Promise<Plan[]> {
 
 // Before the library, one plan was kept per folder under `plan:<cwd>`.
 async function migrateLegacy($: EngineInterface): Promise<void> {
-  const legacyKey = `plan:${await $.session.cwd()}`
+  const legacyKey = fitKey('plan', await $.session.cwd())
   const saved = await $.store.get(legacyKey)
   if (saved === undefined) return
 

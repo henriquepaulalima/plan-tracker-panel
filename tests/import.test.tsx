@@ -48,17 +48,21 @@ function world(
     mtimes?: Record<string, number>
     model?: string
     stored?: Record<string, unknown>
+    root?: string
   } = {},
 ): World {
   const state: World = { stored: new Map(Object.entries(options.stored ?? {})), appended: [], modelCalls: 0 }
   const disk = options.files ?? {}
+  const repo = options.root ?? '/repo'
 
-  on('session.cwd', () => ({ value: '/repo' }))
+  on('session.cwd', () => ({ value: repo }))
   on('session.start', (_, e) => e)
   on('command.register', () => ({ value: undefined }) as never)
   on('tool.register', () => ({ value: undefined }) as never)
   on('store.get', (_, e) => ({ value: state.stored.get(e.key) }))
   on('store.set', (_, e) => {
+    // The engine's own limit on a key.
+    if (e.key.length > 256) throw new Error(`$.store.set: the key is ${e.key.length} characters, over the 256 limit`)
     state.stored.set(e.key, e.value)
 
     return { value: undefined }
@@ -84,12 +88,12 @@ function world(
     const ok = (stdout: string) => ({
       value: { exitCode: 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false },
     })
-    if (args.startsWith('rev-parse')) return ok('/repo/.git\n')
+    if (args.startsWith('rev-parse')) return ok(`${repo}/.git\n`)
     if (args.startsWith('worktree list')) {
-      return ok('worktree /repo\nHEAD 1\nbranch refs/heads/main\n\nworktree /wt/feature\nHEAD 2\nbranch refs/heads/feature\n')
+      return ok(`worktree ${repo}\nHEAD 1\nbranch refs/heads/main\n\nworktree /wt/feature\nHEAD 2\nbranch refs/heads/feature\n`)
     }
     if (args.startsWith('ls-files')) {
-      const root = e.init?.cwd === '/wt/feature' ? '/wt/feature/' : '/repo/'
+      const root = e.init?.cwd === '/wt/feature' ? '/wt/feature/' : `${repo}/`
       const listed = Object.keys(disk)
         .filter(path => path.startsWith(root))
         .map(path => path.slice(root.length))
@@ -211,6 +215,23 @@ test('importing a file with statuses tracks it as it stands, with no model call'
   expect(await ui.find({ type: 'Text', text: '● Add the invoice model' })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: '◐ Charge cards' })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: '○ Send receipts' })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a plan in a deeply nested repository is kept under keys the store accepts', async ($, on) => {
+  const root = `/home/someone/${'very-long-folder-name/'.repeat(6)}shop-app`
+  const engine = world(on, { files: { [`${root}/docs/plans/billing.md`]: ONGOING }, root })
+
+  const ran = await $.command.run({ command: 'plan-tracker-import', args: 'docs/plans/billing.md' })
+
+  expect(ran.text).toBe('Tracking "Billing": 1/3 steps finished.')
+  expect([...engine.stored.keys()].every(key => key.length <= 256)).toBe(true)
+  expect([...engine.stored.values()]).toContain(`file:${root}/docs/plans/billing.md`)
+
+  const listed = await $.command.run({ command: 'plan-tracker-panel', args: 'plans' })
+  expect(listed.text).toBeDefined()
+  const ui = await $.ui.mount(PANE)
+  expect(await ui.find({ type: 'Text', text: '◐ Charge cards' })).toBeDefined()
   await ui.unmount()
 })
 
