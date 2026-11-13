@@ -1,6 +1,11 @@
 {
   "name": "plan-tracker-panel",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A side panel showing the approved implementation plan and which steps are done, in progress or left.",
+  "author": { "name": "henriquepaulalima", "url": "https://github.com/henriquepaulalima" },
+  "homepage": "https://github.com/henriquepaulalima/plan-tracker-panel",
+  "repository": "https://github.com/henriquepaulalima/plan-tracker-panel",
+  "license": "MIT",
+  "keywords": ["plan", "planning", "progress", "panel", "checklist", "plan-mode", "markdown"],
   "types": "./types/index.d.ts"
 }

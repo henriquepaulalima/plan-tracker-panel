@@ -1,5 +1,6 @@
 {
   "name": "plan-tracker-panel",
   "owner": { "name": "henriquepaulalima" },
+  "description": "plan-tracker-panel: a Claude Code side panel that tracks your implementation plan's progress.",
   "plugins": [{ "name": "plan-tracker-panel", "source": "./" }]
 }

@@ -2,6 +2,18 @@
 
 A side panel for the Claude Code CLI that shows your approved implementation plan and which steps are done, in progress or still left, so you don't have to scroll back or ask Claude to reprint it.
 
+![plan-tracker-panel: importing a plan, reading it, and watching Claude mark steps done](assets/demo.gif)
+
+## Features
+
+- **Live progress beside the chat.** Approve a plan in plan mode and it is tracked automatically. Claude reports each step through a `plan_step` tool, and the panel's checklist and progress bar update as it works.
+- **Import any Markdown plan.** Pick from every `.md` file in the repository and its worktrees, or pass a path. Statuses are read from checkboxes (`[x]`, `[~]`, `[-]`), tags like `(done)`, `[WIP]` and `✅`, `Status:` lines, or sub-task checkboxes. When a file has no markers at all, one small `haiku` request infers them.
+- **Follows the file.** The tracked plan is re-read whenever its file changes, so a plan another session keeps editing stays current, and Claude is told when step numbers shift.
+- **Full plan view with search.** The Plan view renders the whole document, with tables fitted to the panel and framed code blocks. Press `f` to find text: matches are highlighted and Enter jumps between them.
+- **Saved plans.** Every imported or approved plan is kept in a list shared by all worktrees of the repository. Each card shows progress and the current step, and switching plans tells Claude where its reports now go.
+- **Keyboard first.** `alt+k` moves the keyboard between the prompt and the panel, `1`–`4` switch views, and `alt+i` / `alt+l` open the import picker and the plan list.
+- **Works in the desktop app too.** There it uses the app's own Markdown and clickable view names.
+
 ## Install
 
 At the prompt of a terminal session:
@@ -87,6 +99,14 @@ The tracked plan follows its file. The panel checks the file once a second and r
 ## Saved plans
 
 Every imported, approved or `plan_set` plan is kept in a list shared by all worktrees of the repository. Each folder remembers which plan it shows. Switching plans from the list tells Claude, so its `plan_step` reports go to the new plan.
+
+## What it runs, reads and sends
+
+- **Git, read-only.** To find the repository and its `.md` files it runs `git rev-parse --git-common-dir`, `git worktree list --porcelain` and `git ls-files` in the current folder and its worktrees. It never writes to the repository.
+- **Files.** It reads the Markdown file you import, and checks its modification time once a second while that plan is tracked. It writes no files.
+- **Model requests.** Only when an imported file has no status markers, its text is sent to the `haiku` model through Claude Code's own model access, as described in [Importing a plan](#importing-a-plan). Nothing is sent to any other service.
+- **Local storage.** Saved plans and which plan each folder shows are kept in Claude Code's per-plugin store on your machine.
+- **Session.** It adds a short instruction to the system prompt and registers the `plan_step` and `plan_set` tools, which Claude calls to report progress and which run without a permission prompt because they only update the panel.
 
 ## Limits
 
